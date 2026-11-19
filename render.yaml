@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: mvule-sandbox
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: MVULE_JWT_SECRET
+        generateValue: true
+      - key: MVULE_DB
+        value: /data/mvule.db

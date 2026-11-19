@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+data/
+*.db
+.pytest_cache/
+mobile/build/
+mobile/.dart_tool/
+mobile/android/.gradle/
+mobile/android/.kotlin/
+mobile/android/local.properties

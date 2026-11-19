@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F6F7F4">
+<title>Mvule Pay · Sandbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F7F4;--card:#FFFFFF;--ink:#0F1A14;--ink2:#4B5A51;--ink3:#8A968E;--line:#E4E8E2;
+  --brand:#1F6B45;--brand-2:#2E8B5A;--brand-soft:#E5F2EA;--warn:#B7791F;--warn-soft:#FCF3E2;
+  --bad:#B42318;--bad-soft:#FDECEA;--good:#1F6B45;--radius:16px;
+  --mono:"DM Mono",ui-monospace,monospace;--sans:"DM Sans",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+.sbx{position:sticky;top:0;z-index:20;background:var(--warn-soft);color:var(--warn);font:500 11px/1 var(--mono);
+  letter-spacing:.08em;text-transform:uppercase;text-align:center;padding:8px 12px;border-bottom:1px solid #F1E2C2}
+.app{max-width:460px;margin:0 auto;min-height:100vh;padding:20px 18px 110px}
+header.top{display:flex;align-items:center;justify-content:space-between;margin:6px 0 22px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.02em;font-size:18px}
+.logo i{width:30px;height:30px;border-radius:9px;background:var(--brand);display:grid;place-items:center;color:#fff;font-style:normal;font-size:15px}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-weight:600;font-size:13px;border:0;cursor:pointer}
+h1{font-size:24px;letter-spacing:-.025em;font-weight:700;margin-bottom:4px}
+h2{font-size:13px;font-weight:600;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em;margin:26px 0 10px}
+.muted{color:var(--ink3)}.mono{font-family:var(--mono)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.bal{background:var(--ink);color:#fff;border:0;padding:22px;position:relative;overflow:hidden}
+.bal::after{content:"SANDBOX";position:absolute;right:-14px;bottom:8px;font:600 46px/1 var(--mono);color:rgba(255,255,255,.05);letter-spacing:.05em}
+.bal .lbl{font-size:12px;color:#A9B8AE;display:flex;justify-content:space-between}
+.bal .amt{font-size:36px;font-weight:600;letter-spacing:-.03em;margin:10px 0 4px;font-variant-numeric:tabular-nums}
+.bal .amt small{font-size:18px;color:#A9B8AE;font-weight:500;margin-right:6px}
+.bal .acct{font:400 12px var(--mono);color:#A9B8AE}
+.curs{display:flex;gap:6px;margin-top:16px}
+.curs button{background:rgba(255,255,255,.08);border:0;color:#cfd8d2;padding:6px 11px;border-radius:99px;font:500 12px var(--mono);cursor:pointer}
+.curs button.on{background:#fff;color:var(--ink)}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.act{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;font-size:13px;font-weight:500}
+.act span{display:grid;place-items:center;width:36px;height:36px;margin:0 auto 8px;border-radius:11px;background:var(--brand-soft);color:var(--brand);font-size:17px}
+.list .row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.list .row:last-child{border-bottom:0}
+.ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none;font-size:15px;background:#EEF1EC;color:var(--ink2)}
+.ic.in{background:var(--brand-soft);color:var(--brand)}
+.row .t{flex:1;min-width:0}.row .t b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t small{color:var(--ink3);font-size:12px}
+.row .a{text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+.row .a.in{color:var(--good)}
+.pill{display:inline-block;font:500 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:4px 7px;border-radius:99px}
+.pill.pending{background:var(--warn-soft);color:var(--warn)}.pill.failed{background:var(--bad-soft);color:var(--bad)}.pill.completed{background:var(--brand-soft);color:var(--brand)}
+label{display:block;font-size:13px;font-weight:500;color:var(--ink2);margin:16px 0 6px}
+input,select{width:100%;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:13px 14px;outline:none;transition:border .15s}
+input:focus,select:focus{border-color:var(--brand)}
+.amtin{font-size:30px;font-weight:600;letter-spacing:-.02em;padding:16px 14px;font-variant-numeric:tabular-nums}
+.hint{font-size:12px;color:var(--ink3);margin-top:6px;min-height:16px}.hint.ok{color:var(--good)}.hint.err{color:var(--bad)}
+.btn{display:block;width:100%;border:0;border-radius:12px;padding:15px;font-weight:600;cursor:pointer;margin-top:22px;background:var(--brand);color:#fff;transition:opacity .15s}
+.btn:disabled{opacity:.45;cursor:not-allowed}.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:transparent;color:var(--bad);border:1px solid #F3C7C2}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chips button{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:7px 12px;font:500 12px var(--mono);cursor:pointer}
+.seg{display:flex;background:#ECEFEA;border-radius:12px;padding:4px;gap:4px}
+.seg button{flex:1;border:0;background:transparent;border-radius:9px;padding:9px;font-weight:500;cursor:pointer;color:var(--ink2)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.back{border:0;background:none;cursor:pointer;color:var(--ink2);font-size:14px;margin-bottom:14px;display:inline-flex;gap:6px;align-items:center}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-top:1px solid var(--line);
+  display:flex;justify-content:center;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:15}
+nav.tabs div{display:flex;max-width:460px;width:100%}
+nav.tabs button{flex:1;border:0;background:none;padding:6px;font-size:11px;font-weight:500;color:var(--ink3);cursor:pointer}
+nav.tabs button b{display:block;font-size:18px;font-weight:400;margin-bottom:2px}
+nav.tabs button.on{color:var(--brand)}
+.kv{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.kv:last-child{border:0}.kv span:first-child{color:var(--ink3)}.kv span:last-child{text-align:right;word-break:break-all}
+.rcpt{position:relative;overflow:hidden}
+.rcpt::before{content:"SANDBOX · NOT A REAL TRANSACTION";position:absolute;inset:0;display:grid;place-items:center;transform:rotate(-24deg);
+  font:600 17px var(--mono);color:rgba(183,121,31,.13);letter-spacing:.08em;pointer-events:none;white-space:nowrap}
+.big{font-size:32px;font-weight:600;letter-spacing:-.03em;text-align:center;margin:8px 0 6px;font-variant-numeric:tabular-nums}
+.center{text-align:center}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;
+  font-size:13px;opacity:0;transition:.25s;z-index:40;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%)}.toast.err{background:var(--bad)}
+.empty{text-align:center;padding:28px 0;color:var(--ink3);font-size:14px}
+.auth{padding-top:8vh}.auth .logo{font-size:22px;margin-bottom:28px}
+.note{background:var(--warn-soft);border-radius:12px;padding:12px 14px;font-size:13px;color:#7A5214;margin-top:14px;line-height:1.45}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .7s linear infinite;vertical-align:-1px}
+@keyframes s{to{transform:rotate(360deg)}}
+@media print{nav.tabs,.sbx,.back,.btn{display:none!important}body{background:#fff}}
+</style>
+</head>
+<body>
+<div class="sbx">Sandbox environment · test funds only · no real money moves</div>
+<main class="app" id="app"></main>
+<nav class="tabs" id="tabs" hidden><div>
+  <button data-go="home"><b>⌂</b>Home</button>
+  <button data-go="send"><b>↗</b>Send</button>
+  <button data-go="activity"><b>≡</b>Activity</button>
+  <button data-go="settings"><b>⚙</b>Settings</button>
+</div></nav>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = (new URLSearchParams(location.search).get('api') || localStorage.getItem('mv_api') || '').replace(/\/$/, '');
+if (new URLSearchParams(location.search).get('api')) localStorage.setItem('mv_api', API);
+const S = { token: localStorage.getItem('mv_token'), user: null, meta: null, wallets: [], cur: localStorage.getItem('mv_cur') || 'UGX' };
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uuid = () => crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random();
+
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (S.token) headers.Authorization = 'Bearer ' + S.token;
+  const res = await fetch(API + path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && S.token) { logout(); throw new Error('Session expired'); }
+  if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : (data.detail?.[0]?.msg || 'Request failed'));
+  return data;
+}
+function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (err ? ' err' : ''); clearTimeout(t._h); t._h = setTimeout(() => t.className = 'toast', 2800); }
+function fmt(amount, cur) {
+  const d = S.meta?.currencies[cur]?.decimals ?? 2;
+  return Number(amount).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+const sym = c => S.meta?.currencies[c]?.symbol || c;
+const when = iso => { const d = new Date(iso); return d.toLocaleDateString(undefined,{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}); };
+const W = () => S.wallets.find(w => w.currency === S.cur) || S.wallets[0];
+function go(r) { location.hash = '#/' + r; }
+function logout() { localStorage.removeItem('mv_token'); S.token = null; S.user = null; go('login'); }
+
+let poll;
+async function route() {
+  clearInterval(poll);
+  const [page, arg] = location.hash.replace(/^#\//, '').split('/');
+  if (!S.meta) S.meta = await api('/api/meta').catch(() => null);
+  if (!S.token) return renderAuth(page === 'register' ? 'register' : 'login');
+  if (!S.user) { try { S.user = await api('/api/me'); } catch { return; } }
+  $('#tabs').hidden = false;
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.go === (page || 'home')));
+  const views = { home, send, topup, payout, activity, settings, tx };
+  (views[page] || home)(arg);
+}
+window.addEventListener('hashchange', route);
+document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => go(b.dataset.go));
+
+/* ---------------- auth ---------------- */
+function renderAuth(mode) {
+  $('#tabs').hidden = true;
+  const reg = mode === 'register';
+  $('#app').innerHTML = `<div class="auth">
+    <div class="logo"><i>M</i>Mvule Pay</div>
+    <h1>${reg ? 'Create a sandbox account' : 'Welcome back'}</h1>
+    <p class="muted">${reg ? 'Wallets open at 0. Add test funds any time.' : 'Sign in to your sandbox wallet.'}</p>
+    <form id="f">
+      ${reg ? `<label>Full name</label><input name="full_name" required autocomplete="name">` : ''}
+      <label>Email</label><input name="email" type="email" required autocomplete="email">
+      ${reg ? `<label>Phone <span class="muted">(optional, lets people pay you by number)</span></label><input name="phone" inputmode="tel" placeholder="+256…">` : ''}
+      <label>Password</label><input name="password" type="password" required minlength="${reg ? 8 : 1}" autocomplete="${reg ? 'new-password' : 'current-password'}">
+      <button class="btn" type="submit">${reg ? 'Create account' : 'Sign in'}</button>
+      <button class="btn ghost" type="button" onclick="go('${reg ? 'login' : 'register'}')">${reg ? 'I already have an account' : 'Create an account'}</button>
+    </form>
+    <div class="note">This is a sandbox. Balances, banks and payout rails are simulated. Nothing here can send or receive real money. <a href="/download" style="color:inherit;font-weight:600">Get the Android app →</a></div>
+  </div>`;
+  $('#f').onsubmit = async e => {
+    e.preventDefault();
+    const body = Object.fromEntries(new FormData(e.target));
+    const btn = e.target.querySelector('.btn'); btn.disabled = true;
+    try {
+      const r = await api(reg ? '/api/auth/register' : '/api/auth/login', { method: 'POST', body });
+      S.token = r.token; S.user = r.user; localStorage.setItem('mv_token', r.token); go('home');
+    } catch (err) { toast(err.message, 1); btn.disabled = false; }
+  };
+}
+
+/* ---------------- home ---------------- */
+async function loadWallets() { S.wallets = await api('/api/wallets'); }
+function txRow(t) {
+  const sign = t.direction === 'in' ? '+' : '−';
+  const icon = { topup: '＋', transfer: t.direction === 'in' ? '↙' : '↗', payout: '⇥' }[t.type];
+  return `<div class="row" onclick="go('tx/${t.ref}')">
+    <div class="ic ${t.direction === 'in' ? 'in' : ''}">${icon}</div>
+    <div class="t"><b>${esc(t.title)}</b><small>${when(t.created_at)}${t.status !== 'completed' ? ` · <span class="pill ${t.status}">${t.status}</span>` : ''}</small></div>
+    <div class="a ${t.direction === 'in' ? 'in' : ''}">${sign}${sym(t.currency)} ${fmt(t.amount, t.currency)}</div></div>`;
+}
+async function home() {
+  await loadWallets();
+  const txs = await api('/api/transactions?limit=6');
+  const w = W(), initials = S.user.full_name.split(' ').map(p => p[0]).slice(0, 2).join('');
+  $('#app').innerHTML = `
+    <header class="top"><div class="logo"><i>M</i>Mvule Pay</div><button class="avatar" onclick="go('settings')">${esc(initials)}</button></header>
+    <p class="muted">Hi ${esc(S.user.full_name.split(' ')[0])}</p>
+    <div class="card bal" style="margin-top:10px">
+      <div class="lbl"><span>${w.currency} balance</span>${Number(w.pending_out) > 0 ? `<span>${sym(w.currency)} ${fmt(w.pending_out, w.currency)} pending</span>` : ''}</div>
+      <div class="amt"><small>${sym(w.currency)}</small>${fmt(w.balance, w.currency)}</div>
+      <div class="acct">Acct ${w.account_number}</div>
+      <div class="curs">${S.wallets.map(x => `<button class="${x.currency === w.currency ? 'on' : ''}" data-c="${x.currency}">${x.currency}</button>`).join('')}</div>
+    </div>
+    <div class="actions">
+      <div class="act" onclick="go('topup')"><span>＋</span>Test funds</div>
+      <div class="act" onclick="go('send')"><span>↗</span>Send</div>
+      <div class="act" onclick="go('payout')"><span>⇥</span>Pay out</div>
+    </div>
+    <h2>Recent activity</h2>
+    <div class="card list" style="padding:4px 16px">${txs.length ? txs.map(txRow).join('') : '<div class="empty">No transactions yet.<br>Add test funds to get started.</div>'}</div>`;
+  document.querySelectorAll('.curs button').forEach(b => b.onclick = () => { S.cur = b.dataset.c; localStorage.setItem('mv_cur', S.cur); home(); });
+  if (txs.some(t => t.status === 'pending')) poll = setInterval(home, 3000);
+}
+
+/* ---------------- shared bits ---------------- */
+function curSelect() {
+  return `<label>Wallet</label><select id="cur">${S.wallets.map(w => `<option value="${w.currency}" ${w.currency === S.cur ? 'selected' : ''}>${w.currency} · ${sym(w.currency)} ${fmt(w.balance, w.currency)} available</option>`).join('')}</select>`;
+}
+function bindCur(cb) { $('#cur').onchange = e => { S.cur = e.target.value; localStorage.setItem('mv_cur', S.cur); cb && cb(); }; }
+const back = () => `<button class="back" onclick="history.back()">← Back</button>`;
+
+/* ---------------- top-up ---------------- */
+async function topup() {
+  await loadWallets();
+  const render = () => {
+    const max = S.meta.currencies[S.cur].topup_max;
+    const quick = [0.05, 0.1, 0.5, 1].map(f => Math.round(max * f));
+    $('#app').innerHTML = `${back()}<h1>Add test funds</h1><p class="muted">Sandbox money for trying the app. Up to ${sym(S.cur)} ${fmt(max, S.cur)} per top-up.</p>
+      ${curSelect()}
+      <label>Amount</label><input class="amtin" id="amt" inputmode="decimal" placeholder="0">
+      <div class="chips">${quick.map(q => `<button data-v="${q}">${fmt(q, S.cur)}</button>`).join('')}</div>
+      <button class="btn" id="go">Add funds</button>`;
+    bindCur(render);
+    document.querySelectorAll('.chips button').forEach(b => b.onclick = () => $('#amt').value = b.dataset.v);
+    const key = uuid();
+    $('#go').onclick = async () => {
+      $('#go').disabled = true;
+      try { const t = await api('/api/topups', { method: 'POST', headers: { 'Idempotency-Key': key }, body: { currency: S.cur, amount: $('#amt').value } });
+        toast('Test funds added'); go('tx/' + t.ref);
+      } catch (e) { toast(e.message, 1); $('#go').disabled = false; }
+    };
+  };
+  render();
+}
+
+/* ---------------- send ---------------- */
+async function send() {
+  await loadWallets();
+  const payees = (await api('/api/payees')).filter(p => p.kind === 'internal');
+  $('#app').innerHTML = `<h1>Send money</h1><p class="muted">Instant transfer to another Mvule sandbox user.</p>
+    ${curSelect()}
+    <label>Recipient</label><input id="rc" placeholder="Email, phone or account number" autocomplete="off">
+    <div class="hint" id="rch"></div>
+    ${payees.length ? `<div class="chips">${payees.map(p => `<button data-r="${esc(p.details.recipient)}">${esc(p.label)}</button>`).join('')}</div>` : ''}
+    <label>Amount</label><input class="amtin" id="amt" inputmode="decimal" placeholder="0">
+    <label>Note <span class="muted">(optional)</span></label><input id="memo" maxlength="140">
+    <label style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" id="save" style="width:auto"> Save recipient</label>
+    <button class="btn" id="go" disabled>Review</button>`;
+  bindCur();
+  let found = null, t;
+  const look = () => { clearTimeout(t); found = null; $('#go').disabled = true; const q = $('#rc').value.trim();
+    if (q.length < 4) { $('#rch').textContent = ''; return; }
+    $('#rch').className = 'hint'; $('#rch').innerHTML = '<span class="spin"></span>';
+    t = setTimeout(async () => { try { found = (await api('/api/recipients/lookup?q=' + encodeURIComponent(q))).name;
+      $('#rch').className = 'hint ok'; $('#rch').textContent = '✓ ' + found; $('#go').disabled = false;
+    } catch (e) { $('#rch').className = 'hint err'; $('#rch').textContent = e.message; } }, 350); };
+  $('#rc').oninput = look;
+  document.querySelectorAll('.chips button').forEach(b => b.onclick = () => { $('#rc').value = b.dataset.r; look(); });
+  $('#go').onclick = () => confirmSend({ currency: S.cur, amount: $('#amt').value, recipient: $('#rc').value.trim(), memo: $('#memo').value || null }, found, $('#save').checked);
+}
+function confirmSend(body, name, save) {
+  if (!(Number(body.amount) > 0)) return toast('Enter an amount', 1);
+  const key = uuid();
+  $('#app').innerHTML = `<button class="back" onclick="route()">← Edit</button><h1>Confirm transfer</h1>
+    <div class="card" style="margin-top:16px"><div class="big">${sym(body.currency)} ${fmt(body.amount, body.currency)}</div>
+    <div class="kv"><span>To</span><span>${esc(name)}</span></div>
+    <div class="kv"><span>Recipient ID</span><span class="mono">${esc(body.recipient)}</span></div>
+    <div class="kv"><span>Fee</span><span>${sym(body.currency)} 0</span></div>
+    ${body.memo ? `<div class="kv"><span>Note</span><span>${esc(body.memo)}</span></div>` : ''}</div>
+    <button class="btn" id="go">Send ${sym(body.currency)} ${fmt(body.amount, body.currency)}</button>`;
+  $('#go').onclick = async () => { $('#go').disabled = true;
+    try { const t = await api('/api/transfers', { method: 'POST', headers: { 'Idempotency-Key': key }, body });
+      if (save) await api('/api/payees', { method: 'POST', body: { label: name, kind: 'internal', details: { recipient: body.recipient } } }).catch(() => {});
+      toast('Sent'); go('tx/' + t.ref);
+    } catch (e) { toast(e.message, 1); $('#go').disabled = false; } };
+}
+
+/* ---------------- payout ---------------- */
+async function payout() {
+  await loadWallets();
+  const rails = S.meta.rails; let rail = 'mockmomo';
+  const render = () => {
+    const r = rails[rail];
+    $('#app').innerHTML = `${back()}<h1>Pay out</h1><p class="muted">Simulated withdrawal. Settles in about ${r.settle_seconds}s.</p>
+      <div class="seg" style="margin-top:16px">${Object.entries(rails).map(([k, v]) => `<button data-r="${k}" class="${k === rail ? 'on' : ''}">${v.name}</button>`).join('')}</div>
+      ${curSelect()}
+      ${r.needs_bank ? `<label>Sandbox bank</label><select id="bank">${r.banks.map(b => `<option value="${b.code}">${b.name}</option>`).join('')}</select>` : ''}
+      <label>Account name</label><input id="an" value="${esc(S.user.full_name)}">
+      <label>${r.needs_bank ? 'Account number' : 'Mobile number'}</label><input id="ac" inputmode="numeric">
+      <label>Amount</label><input class="amtin" id="amt" inputmode="decimal" placeholder="0">
+      <div class="hint">Tip: amounts ending in .13 (UGX: 13) are rejected by the sandbox rail so you can test refunds.</div>
+      <button class="btn" id="go">Pay out</button>`;
+    bindCur(render);
+    document.querySelectorAll('.seg button').forEach(b => b.onclick = () => { rail = b.dataset.r; render(); });
+    const key = uuid();
+    $('#go').onclick = async () => { $('#go').disabled = true;
+      try { const t = await api('/api/payouts', { method: 'POST', headers: { 'Idempotency-Key': key }, body: {
+          currency: S.cur, amount: $('#amt').value, rail, bank_code: $('#bank')?.value, account_name: $('#an').value, account_number: $('#ac').value } });
+        toast('Payout submitted'); go('tx/' + t.ref);
+      } catch (e) { toast(e.message, 1); $('#go').disabled = false; } };
+  };
+  render();
+}
+
+/* ---------------- activity ---------------- */
+async function activity() {
+  await loadWallets();
+  let filter = '';
+  const render = async () => {
+    const txs = await api('/api/transactions?limit=100' + (filter ? '&currency=' + filter : ''));
+    $('#app').innerHTML = `<h1>Activity</h1>
+      <div class="chips">${['', ...S.wallets.map(w => w.currency)].map(c => `<button data-c="${c}" style="${c === filter ? 'background:var(--ink);color:#fff;border-color:var(--ink)' : ''}">${c || 'All'}</button>`).join('')}</div>
+      <div class="card list" style="padding:4px 16px;margin-top:14px">${txs.length ? txs.map(txRow).join('') : '<div class="empty">Nothing here yet.</div>'}</div>`;
+    document.querySelectorAll('.chips button').forEach(b => b.onclick = () => { filter = b.dataset.c; render(); });
+    clearInterval(poll); if (txs.some(t => t.status === 'pending')) poll = setInterval(render, 3000);
+  };
+  render();
+}
+
+/* ---------------- receipt ---------------- */
+async function tx(ref) {
+  const render = async () => {
+    let t; try { t = await api('/api/transactions/' + ref); } catch (e) { toast(e.message, 1); return go('activity'); }
+    const cp = t.counterparty || {};
+    const railName = t.rail === 'internal' ? 'Mvule instant transfer' : t.rail === 'sandbox' ? 'Sandbox faucet' : S.meta.rails[t.rail]?.name;
+    $('#app').innerHTML = `<button class="back" onclick="go('home')">← Home</button>
+      <div class="card rcpt">
+        <div class="center"><span class="pill ${t.status}">${t.status === 'pending' ? '<span class="spin"></span> ' : ''}${t.status}</span></div>
+        <div class="big">${t.direction === 'in' ? '+' : '−'}${sym(t.currency)} ${fmt(t.amount, t.currency)}</div>
+        <p class="center muted" style="margin-bottom:14px">${esc(t.title)}</p>
+        ${t.failure_reason ? `<div class="note" style="background:var(--bad-soft);color:var(--bad);margin:0 0 10px">${esc(t.failure_reason)} · funds returned to your wallet.</div>` : ''}
+        <div class="kv"><span>Reference</span><span class="mono">${t.ref}</span></div>
+        <div class="kv"><span>Type</span><span>${t.type}</span></div>
+        <div class="kv"><span>Method</span><span>${esc(railName)}</span></div>
+        ${cp.name || cp.account_name ? `<div class="kv"><span>${t.direction === 'in' ? 'From' : 'To'}</span><span>${esc(cp.name || cp.account_name)}</span></div>` : ''}
+        ${cp.bank_name ? `<div class="kv"><span>Bank</span><span>${esc(cp.bank_name)}</span></div>` : ''}
+        ${cp.account_number ? `<div class="kv"><span>Account</span><span class="mono">${esc(cp.account_number)}</span></div>` : ''}
+        ${t.memo ? `<div class="kv"><span>Note</span><span>${esc(t.memo)}</span></div>` : ''}
+        <div class="kv"><span>Created</span><span>${when(t.created_at)}</span></div>
+        ${t.status === 'pending' && t.settle_at ? `<div class="kv"><span>Expected</span><span>${when(t.settle_at)}</span></div>` : ''}
+        <div class="kv"><span>Environment</span><span class="mono">SANDBOX</span></div>
+      </div>
+      <button class="btn ghost" onclick="window.print()">Print / save receipt</button>`;
+    clearInterval(poll); if (t.status === 'pending') poll = setInterval(render, 2500);
+  };
+  render();
+}
+
+/* ---------------- settings ---------------- */
+async function settings() {
+  await loadWallets();
+  $('#app').innerHTML = `<h1>Settings</h1>
+    <h2>Profile</h2><div class="card">
+      <div class="kv"><span>Name</span><span>${esc(S.user.full_name)}</span></div>
+      <div class="kv"><span>Email</span><span>${esc(S.user.email)}</span></div>
+      <div class="kv"><span>Phone</span><span>${esc(S.user.phone || '—')}</span></div></div>
+    <h2>Account numbers</h2><div class="card">${S.wallets.map(w => `<div class="kv"><span>${w.currency}</span><span class="mono">${w.account_number}</span></div>`).join('')}</div>
+    <h2>Change password</h2><form class="card" id="pw">
+      <label style="margin-top:0">Current password</label><input type="password" name="current_password" required autocomplete="current-password">
+      <label>New password</label><input type="password" name="new_password" minlength="8" required autocomplete="new-password">
+      <label>Confirm new password</label><input type="password" name="confirm" minlength="8" required autocomplete="new-password">
+      <button class="btn" type="submit">Update password</button></form>
+    <h2>Sandbox rules</h2><div class="card" style="font-size:14px;line-height:1.55;color:var(--ink2)">
+      Wallets start at 0. Test top-ups are capped per currency. Transfers only reach other sandbox users. Payout rails and banks are fictional and settle on a timer.
+      ${S.meta.test_rules.map(r => '<br>• ' + esc(r)).join('')}</div>
+    <button class="btn danger" onclick="logout()">Sign out</button>`;
+  $('#pw').onsubmit = async e => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.target));
+    if (f.new_password !== f.confirm) return toast('New passwords do not match', 1);
+    try { await api('/api/me/password', { method: 'POST', body: { current_password: f.current_password, new_password: f.new_password } }); toast('Password updated'); e.target.reset(); }
+    catch (err) { toast(err.message, 1); } };
+}
+
+if (!location.hash) location.hash = S.token ? '#/home' : '#/login';
+route();
+</script>
+</body>
+</html>
