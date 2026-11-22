@@ -7,7 +7,14 @@ CURRENCIES = {
     "USD": {"exp": 2, "symbol": "$", "topup_max": 1_000},
     "KES": {"exp": 2, "symbol": "KSh", "topup_max": 100_000},
     "EUR": {"exp": 2, "symbol": "€", "topup_max": 1_000},
+    # Real Ugandan shillings via Flutterwave. Owner-only; never mixed with test funds.
+    "UGX_LIVE": {"exp": 0, "symbol": "USh", "topup_max": 50_000, "live": True, "label": "UGX · LIVE"},
 }
+SANDBOX_CURRENCIES = [k for k, v in CURRENCIES.items() if not v.get("live")]
+
+
+def is_live(cur: str) -> bool:
+    return bool(CURRENCIES.get(cur, {}).get("live"))
 # A wallet can never hold more than this many top-ups' worth: keeps numbers realistic.
 WALLET_CAP_MULTIPLIER = 10
 

@@ -79,6 +79,10 @@ def connect() -> sqlite3.Connection:
 def init_db() -> None:
     with closing() as c:
         c.executescript(SCHEMA)
+        cols = {r["name"] for r in c.execute("PRAGMA table_info(transactions)")}
+        if "provider_ref" not in cols:  # live-mode migration
+            c.execute("ALTER TABLE transactions ADD COLUMN provider_ref TEXT")
+            c.execute("ALTER TABLE transactions ADD COLUMN provider_status TEXT")
 
 
 @contextmanager

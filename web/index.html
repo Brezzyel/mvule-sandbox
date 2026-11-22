@@ -18,6 +18,14 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;-webkit-font-smoothing:antialiased}
 button,input,select{font:inherit;color:inherit}
+.sbx.live{background:#B42318;color:#fff;border-color:#B42318}
+.bal.live{background:linear-gradient(135deg,#3B0D0A,#7A1712)}.bal.live::after{content:"LIVE"}
+.livetag{display:inline-flex;align-items:center;gap:5px;font:600 10px var(--mono);letter-spacing:.08em;background:#B42318;color:#fff;padding:3px 7px;border-radius:99px}
+.livetag::before{content:"";width:6px;height:6px;border-radius:50%;background:#fff;animation:pl 1.4s infinite}
+@keyframes pl{50%{opacity:.3}}
+.curs button.lv{color:#ffb4ab}.curs button.lv.on{background:#ffb4ab;color:#3B0D0A}
+.rcpt.live::before{content:"LIVE · REAL MONEY";color:rgba(180,35,24,.10)}
+.warnbox{background:var(--bad-soft);color:var(--bad);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.45;margin-top:14px}
 .sbx{position:sticky;top:0;z-index:20;background:var(--warn-soft);color:var(--warn);font:500 11px/1 var(--mono);
   letter-spacing:.08em;text-transform:uppercase;text-align:center;padding:8px 12px;border-bottom:1px solid #F1E2C2}
 .app{max-width:460px;margin:0 auto;min-height:100vh;padding:20px 18px 110px}
@@ -30,12 +38,12 @@ h2{font-size:13px;font-weight:600;color:var(--ink2);text-transform:uppercase;let
 .muted{color:var(--ink3)}.mono{font-family:var(--mono)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
 .bal{background:var(--ink);color:#fff;border:0;padding:22px;position:relative;overflow:hidden}
-.bal::after{content:"SANDBOX";position:absolute;right:-14px;bottom:8px;font:600 46px/1 var(--mono);color:rgba(255,255,255,.05);letter-spacing:.05em}
+.bal::after{content:"SANDBOX";position:absolute;right:-14px;bottom:8px;font:600 46px/1 var(--mono);color:rgba(255,255,255,.05);letter-spacing:.05em;pointer-events:none}
 .bal .lbl{font-size:12px;color:#A9B8AE;display:flex;justify-content:space-between}
 .bal .amt{font-size:36px;font-weight:600;letter-spacing:-.03em;margin:10px 0 4px;font-variant-numeric:tabular-nums}
 .bal .amt small{font-size:18px;color:#A9B8AE;font-weight:500;margin-right:6px}
 .bal .acct{font:400 12px var(--mono);color:#A9B8AE}
-.curs{display:flex;gap:6px;margin-top:16px}
+.curs{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;position:relative;z-index:1}
 .curs button{background:rgba(255,255,255,.08);border:0;color:#cfd8d2;padding:6px 11px;border-radius:99px;font:500 12px var(--mono);cursor:pointer}
 .curs button.on{background:#fff;color:var(--ink)}
 .actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
@@ -90,7 +98,7 @@ nav.tabs button.on{color:var(--brand)}
 </style>
 </head>
 <body>
-<div class="sbx">Sandbox environment · test funds only · no real money moves</div>
+<div class="sbx" id="sbx">Sandbox environment · test funds only · no real money moves</div>
 <main class="app" id="app"></main>
 <nav class="tabs" id="tabs" hidden><div>
   <button data-go="home"><b>⌂</b>Home</button>
@@ -130,14 +138,14 @@ function logout() { localStorage.removeItem('mv_token'); S.token = null; S.user 
 
 let poll;
 async function route() {
-  clearInterval(poll);
+  clearInterval(poll); banner(false);
   const [page, arg] = location.hash.replace(/^#\//, '').split('/');
   if (!S.meta) S.meta = await api('/api/meta').catch(() => null);
   if (!S.token) return renderAuth(page === 'register' ? 'register' : 'login');
   if (!S.user) { try { S.user = await api('/api/me'); } catch { return; } }
   $('#tabs').hidden = false;
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.go === (page || 'home')));
-  const views = { home, send, topup, payout, activity, settings, tx };
+  const views = { home, send, topup, payout, activity, settings, tx, livein, liveout };
   (views[page] || home)(arg);
 }
 window.addEventListener('hashchange', route);
@@ -173,7 +181,16 @@ function renderAuth(mode) {
 }
 
 /* ---------------- home ---------------- */
-async function loadWallets() { S.wallets = await api('/api/wallets'); }
+async function loadWallets() {
+  [S.wallets, S.live] = await Promise.all([api('/api/wallets'), api('/api/live/status').catch(() => ({ owner: false }))]);
+  if (S.live.owner && !S.wallets.some(w => w.live)) S.wallets = await api('/api/wallets');
+}
+const sbxWallets = () => S.wallets.filter(w => !w.live);
+function fixCur() { if (!sbxWallets().some(w => w.currency === S.cur)) S.cur = sbxWallets()[0].currency; }
+function banner(isLive) {
+  const b = $('#sbx'); b.classList.toggle('live', !!isLive);
+  b.textContent = isLive ? 'Live mode · real money · your whitelisted numbers only' : 'Sandbox environment · test funds only · no real money moves';
+}
 function txRow(t) {
   const sign = t.direction === 'in' ? '+' : '−';
   const icon = { topup: '＋', transfer: t.direction === 'in' ? '↙' : '↗', payout: '⇥' }[t.type];
@@ -184,38 +201,46 @@ function txRow(t) {
 }
 async function home() {
   await loadWallets();
-  const txs = await api('/api/transactions?limit=6');
+  const w0 = W(); banner(w0 && w0.live);
+  const txs = await api('/api/transactions?limit=6&currency=' + encodeURIComponent(w0.currency));
   const w = W(), initials = S.user.full_name.split(' ').map(p => p[0]).slice(0, 2).join('');
   $('#app').innerHTML = `
     <header class="top"><div class="logo"><i>M</i>Mvule Pay</div><button class="avatar" onclick="go('settings')">${esc(initials)}</button></header>
     <p class="muted">Hi ${esc(S.user.full_name.split(' ')[0])}</p>
-    <div class="card bal" style="margin-top:10px">
-      <div class="lbl"><span>${w.currency} balance</span>${Number(w.pending_out) > 0 ? `<span>${sym(w.currency)} ${fmt(w.pending_out, w.currency)} pending</span>` : ''}</div>
+    <div class="card bal ${w.live ? 'live' : ''}" style="margin-top:10px">
+      <div class="lbl"><span>${w.live ? '<span class="livetag">LIVE</span>&nbsp; Real UGX' : w.currency + ' balance'}</span>${Number(w.pending_out) > 0 ? `<span>${sym(w.currency)} ${fmt(w.pending_out, w.currency)} pending</span>` : ''}</div>
       <div class="amt"><small>${sym(w.currency)}</small>${fmt(w.balance, w.currency)}</div>
       <div class="acct">Acct ${w.account_number}</div>
-      <div class="curs">${S.wallets.map(x => `<button class="${x.currency === w.currency ? 'on' : ''}" data-c="${x.currency}">${x.currency}</button>`).join('')}</div>
+      <div class="curs">${S.wallets.map(x => `<button class="${x.currency === w.currency ? 'on' : ''} ${x.live ? 'lv' : ''}" data-c="${x.currency}">${x.live ? '● LIVE' : x.currency}</button>`).join('')}</div>
     </div>
+    ${w.live ? `
+    ${S.live.ready ? '' : `<div class="warnbox"><b>Live mode is not active yet.</b><br>${esc(S.live.reason || '')}</div>`}
+    <div class="actions" style="grid-template-columns:1fr 1fr">
+      <div class="act" onclick="go('livein')"><span style="background:var(--bad-soft);color:var(--bad)">＋</span>Deposit</div>
+      <div class="act" onclick="go('liveout')"><span style="background:var(--bad-soft);color:var(--bad)">⇥</span>Withdraw</div>
+    </div>` : `
     <div class="actions">
       <div class="act" onclick="go('topup')"><span>＋</span>Test funds</div>
       <div class="act" onclick="go('send')"><span>↗</span>Send</div>
       <div class="act" onclick="go('payout')"><span>⇥</span>Pay out</div>
-    </div>
+    </div>`}
     <h2>Recent activity</h2>
-    <div class="card list" style="padding:4px 16px">${txs.length ? txs.map(txRow).join('') : '<div class="empty">No transactions yet.<br>Add test funds to get started.</div>'}</div>`;
+    <div class="card list" style="padding:4px 16px">${txs.length ? txs.map(txRow).join('') : (w.live ? '<div class="empty">No live transactions yet.<br>Make a small deposit to test.</div>' : '<div class="empty">No transactions yet.<br>Add test funds to get started.</div>')}</div>`;
   document.querySelectorAll('.curs button').forEach(b => b.onclick = () => { S.cur = b.dataset.c; localStorage.setItem('mv_cur', S.cur); home(); });
   if (txs.some(t => t.status === 'pending')) poll = setInterval(home, 3000);
 }
 
 /* ---------------- shared bits ---------------- */
 function curSelect() {
-  return `<label>Wallet</label><select id="cur">${S.wallets.map(w => `<option value="${w.currency}" ${w.currency === S.cur ? 'selected' : ''}>${w.currency} · ${sym(w.currency)} ${fmt(w.balance, w.currency)} available</option>`).join('')}</select>`;
+  if (!sbxWallets().some(w => w.currency === S.cur)) S.cur = sbxWallets()[0].currency;
+  return `<label>Wallet</label><select id="cur">${sbxWallets().map(w => `<option value="${w.currency}" ${w.currency === S.cur ? 'selected' : ''}>${w.currency} · ${sym(w.currency)} ${fmt(w.balance, w.currency)} available</option>`).join('')}</select>`;
 }
 function bindCur(cb) { $('#cur').onchange = e => { S.cur = e.target.value; localStorage.setItem('mv_cur', S.cur); cb && cb(); }; }
 const back = () => `<button class="back" onclick="history.back()">← Back</button>`;
 
 /* ---------------- top-up ---------------- */
 async function topup() {
-  await loadWallets();
+  await loadWallets(); fixCur();
   const render = () => {
     const max = S.meta.currencies[S.cur].topup_max;
     const quick = [0.05, 0.1, 0.5, 1].map(f => Math.round(max * f));
@@ -239,7 +264,7 @@ async function topup() {
 
 /* ---------------- send ---------------- */
 async function send() {
-  await loadWallets();
+  await loadWallets(); fixCur();
   const payees = (await api('/api/payees')).filter(p => p.kind === 'internal');
   $('#app').innerHTML = `<h1>Send money</h1><p class="muted">Instant transfer to another Mvule sandbox user.</p>
     ${curSelect()}
@@ -281,7 +306,7 @@ function confirmSend(body, name, save) {
 
 /* ---------------- payout ---------------- */
 async function payout() {
-  await loadWallets();
+  await loadWallets(); fixCur();
   const rails = S.meta.rails; let rail = 'mockmomo';
   const render = () => {
     const r = rails[rail];
@@ -306,6 +331,60 @@ async function payout() {
   render();
 }
 
+
+/* ---------------- live mode (real money) ---------------- */
+function liveGuard() {
+  if (!S.live.owner) { go('home'); return false; }
+  banner(true); return true;
+}
+function numberPicker() {
+  return `<label>Your number</label><select id="ph">${S.live.numbers.map(n =>
+    `<option value="${n.msisdn}">${n.network || '?'} · +${n.msisdn.slice(0,3)} ${n.msisdn.slice(3,6)} ${n.msisdn.slice(6)}</option>`).join('')}</select>`;
+}
+function liveLimits() {
+  const left = Math.max(0, S.live.daily_max - S.live.used_24h);
+  return `<div class="hint">Per transaction UGX ${fmt(S.live.min,'UGX_LIVE')}–${fmt(S.live.max,'UGX_LIVE')} · UGX ${fmt(left,'UGX_LIVE')} left in the last 24h</div>`;
+}
+async function livein() {
+  await loadWallets(); if (!liveGuard()) return;
+  if (!S.live.ready) { $('#app').innerHTML = `${back()}<h1>Deposit</h1><div class="warnbox">${esc(S.live.reason)}</div>`; return; }
+  const key = uuid();
+  $('#app').innerHTML = `${back()}<h1>Deposit real money</h1>
+    <p class="muted">You'll get a mobile money prompt on your phone. Your live wallet is credited only after Flutterwave confirms the payment.</p>
+    ${numberPicker()}
+    <label>Amount (UGX)</label><input class="amtin" id="amt" inputmode="numeric" placeholder="1000">${liveLimits()}
+    <div class="chips">${[1000, 2000, 5000, 10000].map(v => `<button data-v="${v}">${fmt(v,'UGX_LIVE')}</button>`).join('')}</div>
+    <div class="warnbox">This charges your real mobile money account, plus provider fees.</div>
+    <button class="btn" id="go" style="background:var(--bad)">Request payment</button>`;
+  document.querySelectorAll('.chips button').forEach(b => b.onclick = () => $('#amt').value = b.dataset.v);
+  $('#go').onclick = async () => { $('#go').disabled = true;
+    try {
+      const r = await api('/api/live/collections', { method: 'POST', headers: { 'Idempotency-Key': key }, body: { amount: $('#amt').value, phone: $('#ph').value } });
+      if (r.authorization?.redirect) sessionStorage.setItem('auth_' + r.transaction.ref, r.authorization.redirect);
+      r.transaction.status === 'failed' ? toast(r.transaction.failure_reason || 'Payment request failed', 1) : toast('Check your phone to approve');
+      go('tx/' + r.transaction.ref);
+    } catch (e) { toast(e.message, 1); $('#go').disabled = false; } };
+}
+async function liveout() {
+  await loadWallets(); if (!liveGuard()) return;
+  if (!S.live.ready) { $('#app').innerHTML = `${back()}<h1>Withdraw</h1><div class="warnbox">${esc(S.live.reason)}</div>`; return; }
+  const key = uuid();
+  $('#app').innerHTML = `${back()}<h1>Withdraw to mobile money</h1>
+    <p class="muted">Available: <b>UGX ${fmt(S.live.balance,'UGX_LIVE')}</b>. Sent only to your whitelisted numbers.</p>
+    ${numberPicker()}
+    <label>Amount (UGX)</label><input class="amtin" id="amt" inputmode="numeric" placeholder="1000">${liveLimits()}
+    <button class="btn" id="go" style="background:var(--bad)">Withdraw</button>`;
+  $('#go').onclick = async () => {
+    const amt = $('#amt').value, ph = $('#ph').selectedOptions[0].textContent;
+    if (!confirm(`Send UGX ${fmt(amt,'UGX_LIVE')} of real money to ${ph}?`)) return;
+    $('#go').disabled = true;
+    try {
+      const r = await api('/api/live/payouts', { method: 'POST', headers: { 'Idempotency-Key': key }, body: { amount: amt, phone: $('#ph').value } });
+      r.transaction.status === 'failed' ? toast(r.transaction.failure_reason || 'Payout failed', 1) : toast('Payout sent to Flutterwave');
+      go('tx/' + r.transaction.ref);
+    } catch (e) { toast(e.message, 1); $('#go').disabled = false; } };
+}
+
 /* ---------------- activity ---------------- */
 async function activity() {
   await loadWallets();
@@ -313,7 +392,7 @@ async function activity() {
   const render = async () => {
     const txs = await api('/api/transactions?limit=100' + (filter ? '&currency=' + filter : ''));
     $('#app').innerHTML = `<h1>Activity</h1>
-      <div class="chips">${['', ...S.wallets.map(w => w.currency)].map(c => `<button data-c="${c}" style="${c === filter ? 'background:var(--ink);color:#fff;border-color:var(--ink)' : ''}">${c || 'All'}</button>`).join('')}</div>
+      <div class="chips">${['', ...S.wallets.map(w => w.currency)].map(c => `<button data-c="${c}" style="${c === filter ? 'background:var(--ink);color:#fff;border-color:var(--ink)' : ''}">${c === 'UGX_LIVE' ? '● LIVE' : (c || 'All')}</button>`).join('')}</div>
       <div class="card list" style="padding:4px 16px;margin-top:14px">${txs.length ? txs.map(txRow).join('') : '<div class="empty">Nothing here yet.</div>'}</div>`;
     document.querySelectorAll('.chips button').forEach(b => b.onclick = () => { filter = b.dataset.c; render(); });
     clearInterval(poll); if (txs.some(t => t.status === 'pending')) poll = setInterval(render, 3000);
@@ -326,26 +405,34 @@ async function tx(ref) {
   const render = async () => {
     let t; try { t = await api('/api/transactions/' + ref); } catch (e) { toast(e.message, 1); return go('activity'); }
     const cp = t.counterparty || {};
-    const railName = t.rail === 'internal' ? 'Mvule instant transfer' : t.rail === 'sandbox' ? 'Sandbox faucet' : S.meta.rails[t.rail]?.name;
+    const railName = t.rail === 'internal' ? 'Mvule instant transfer' : t.rail === 'sandbox' ? 'Sandbox faucet'
+      : t.rail === 'flutterwave' ? `Flutterwave · ${cp.network || 'Mobile money'}` : S.meta.rails[t.rail]?.name;
+    banner(t.live);
+    const authUrl = sessionStorage.getItem('auth_' + t.ref);
     $('#app').innerHTML = `<button class="back" onclick="go('home')">← Home</button>
-      <div class="card rcpt">
+      ${t.live && t.status === 'pending' && t.type === 'topup' ? `<div class="warnbox" style="margin:0 0 12px"><b>Approve the payment on your phone.</b> Enter your mobile money PIN when the prompt appears.
+        ${authUrl ? `<br><a href="${esc(authUrl)}" target="_blank" rel="noopener" style="color:inherit;font-weight:600">No prompt? Open the approval page →</a>` : ''}</div>` : ''}
+      <div class="card rcpt ${t.live ? 'live' : ''}">
         <div class="center"><span class="pill ${t.status}">${t.status === 'pending' ? '<span class="spin"></span> ' : ''}${t.status}</span></div>
         <div class="big">${t.direction === 'in' ? '+' : '−'}${sym(t.currency)} ${fmt(t.amount, t.currency)}</div>
         <p class="center muted" style="margin-bottom:14px">${esc(t.title)}</p>
-        ${t.failure_reason ? `<div class="note" style="background:var(--bad-soft);color:var(--bad);margin:0 0 10px">${esc(t.failure_reason)} · funds returned to your wallet.</div>` : ''}
+        ${t.failure_reason ? `<div class="note" style="background:var(--bad-soft);color:var(--bad);margin:0 0 10px">${esc(t.failure_reason)}${t.type === 'payout' ? ' · funds returned to your wallet.' : ''}</div>` : ''}
         <div class="kv"><span>Reference</span><span class="mono">${t.ref}</span></div>
         <div class="kv"><span>Type</span><span>${t.type}</span></div>
         <div class="kv"><span>Method</span><span>${esc(railName)}</span></div>
         ${cp.name || cp.account_name ? `<div class="kv"><span>${t.direction === 'in' ? 'From' : 'To'}</span><span>${esc(cp.name || cp.account_name)}</span></div>` : ''}
         ${cp.bank_name ? `<div class="kv"><span>Bank</span><span>${esc(cp.bank_name)}</span></div>` : ''}
+        ${cp.msisdn ? `<div class="kv"><span>Phone</span><span class="mono">+${esc(cp.msisdn)}</span></div>` : ''}
         ${cp.account_number ? `<div class="kv"><span>Account</span><span class="mono">${esc(cp.account_number)}</span></div>` : ''}
         ${t.memo ? `<div class="kv"><span>Note</span><span>${esc(t.memo)}</span></div>` : ''}
         <div class="kv"><span>Created</span><span>${when(t.created_at)}</span></div>
         ${t.status === 'pending' && t.settle_at ? `<div class="kv"><span>Expected</span><span>${when(t.settle_at)}</span></div>` : ''}
-        <div class="kv"><span>Environment</span><span class="mono">SANDBOX</span></div>
+        <div class="kv"><span>Environment</span><span class="mono">${t.live ? 'LIVE · real UGX' : 'SANDBOX'}</span></div>
       </div>
+      ${t.live && t.status === 'pending' ? `<button class="btn ghost" id="rf">Check status now</button>` : ''}
       <button class="btn ghost" onclick="window.print()">Print / save receipt</button>`;
-    clearInterval(poll); if (t.status === 'pending') poll = setInterval(render, 2500);
+    if ($('#rf')) $('#rf').onclick = async () => { $('#rf').disabled = true; await api(`/api/live/transactions/${t.ref}/refresh`, { method: 'POST' }).catch(e => toast(e.message, 1)); render(); };
+    clearInterval(poll); if (t.status === 'pending') poll = setInterval(render, t.live ? 5000 : 2500);
   };
   render();
 }

@@ -13,6 +13,7 @@ SYSTEM_ACCOUNTS = {
     "FAUCET": "Sandbox test-funds faucet",
     "PAYOUT_CLEARING": "Payouts in flight",
     "PAYOUT_SETTLED": "Settled to mock rails",
+    "PROVIDER_FLW": "Real funds collected via Flutterwave",
 }
 
 
@@ -58,8 +59,8 @@ def system_account(c, code: str, cur: str) -> int:
     return c.execute("SELECT id FROM accounts WHERE code=? AND currency=?", (code, cur)).fetchone()["id"]
 
 
-def open_wallets(c, user_id: int) -> None:
-    for cur in money.CURRENCIES:
+def open_wallets(c, user_id: int, currencies=None) -> None:
+    for cur in currencies or money.SANDBOX_CURRENCIES:
         c.execute(
             "INSERT OR IGNORE INTO accounts(user_id,kind,name,currency,account_number,created_at) VALUES(?,'user',?,?,?,?)",
             (user_id, f"{cur} wallet", cur, _new_account_number(c), iso()),
@@ -99,7 +100,13 @@ def _insert_txn(c, **f) -> int:
 
 # ---------------------------------------------------------------- operations
 
+def _no_live(cur):
+    if money.is_live(cur):
+        raise LedgerError("Live funds use the live endpoints")
+
+
 def topup(c, user_id: int, cur: str, amount_minor: int, idem: str | None):
+    _no_live(cur)
     if (t := _existing(c, user_id, idem)):
         return t
     if amount_minor > money.topup_max_minor(cur):
@@ -125,6 +132,8 @@ def find_recipient(c, q: str):
 
 
 def transfer(c, user_id: int, cur: str, amount_minor: int, recipient_q: str, memo: str | None, idem: str | None):
+    if money.is_live(cur):
+        raise LedgerError("Live funds can't be sent to other users")
     if (t := _existing(c, user_id, idem)):
         return t
     rcpt = find_recipient(c, recipient_q)
@@ -144,6 +153,7 @@ def transfer(c, user_id: int, cur: str, amount_minor: int, recipient_q: str, mem
 
 
 def payout(c, user_id: int, cur: str, amount_minor: int, rail: str, details: dict, memo: str | None, idem: str | None):
+    _no_live(cur)
     if (t := _existing(c, user_id, idem)):
         return t
     r = money.RAILS.get(rail)
@@ -170,7 +180,8 @@ def payout(c, user_id: int, cur: str, amount_minor: int, rail: str, details: dic
 
 def settle_due(c) -> int:
     """Called by the background worker. Completes or fails pending payouts."""
-    due = c.execute("SELECT * FROM transactions WHERE status='pending' AND settle_at<=?", (iso(),)).fetchall()
+    due = c.execute("SELECT * FROM transactions WHERE status='pending' AND settle_at<=? AND rail IN ('mockbank','mockmomo')",
+                    (iso(),)).fetchall()
     for t in due:
         cur, amt = t["currency"], t["amount_minor"]
         clearing = system_account(c, "PAYOUT_CLEARING", cur)

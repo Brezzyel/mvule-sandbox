@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import db, ledger, money, security
+from . import db, ledger, live, money, security
 
 WEB_DIR = os.path.join(os.path.dirname(__file__), "..", "web")
 DL_DIR = os.path.join(os.path.dirname(__file__), "..", "downloads")
@@ -19,12 +19,16 @@ SETTLE_INTERVAL = float(os.environ.get("MVULE_SETTLE_INTERVAL", "2"))
 
 
 async def _settlement_worker():
+    tick = 0
     while True:
         try:
             with db.write_tx() as c:
                 ledger.settle_due(c)
+            if tick % max(1, int(15 / SETTLE_INTERVAL)) == 0:  # live: ask Flutterwave every ~15s
+                await asyncio.to_thread(live.poll_pending)
         except Exception as e:  # keep the worker alive
             print("settlement error:", e)
+        tick += 1
         await asyncio.sleep(SETTLE_INTERVAL)
 
 
@@ -157,6 +161,7 @@ def wallets(u=Depends(current_user)):
             pending = c.execute("SELECT COALESCE(SUM(amount_minor),0) s FROM transactions WHERE from_account_id=? AND status='pending'",
                                 (a["id"],)).fetchone()["s"]
             out.append({"currency": a["currency"], "symbol": money.CURRENCIES[a["currency"]]["symbol"],
+                        "live": money.is_live(a["currency"]), "label": money.CURRENCIES[a["currency"]].get("label", a["currency"]),
                         "account_number": a["account_number"], "balance": money.from_minor(bal, a["currency"]),
                         "pending_out": money.from_minor(pending, a["currency"])})
     return out
@@ -165,7 +170,8 @@ def wallets(u=Depends(current_user)):
 @app.get("/api/meta")
 def meta():
     return {"environment": "sandbox",
-            "currencies": {k: {"symbol": v["symbol"], "decimals": v["exp"], "topup_max": v["topup_max"]} for k, v in money.CURRENCIES.items()},
+            "currencies": {k: {"symbol": v["symbol"], "decimals": v["exp"], "topup_max": v["topup_max"], "live": bool(v.get("live")),
+                           "label": v.get("label", k)} for k, v in money.CURRENCIES.items()},
             "rails": {k: {"name": v["name"], "settle_seconds": v["settle_seconds"], "needs_bank": v["needs_bank"], "banks": v["banks"]}
                       for k, v in money.RAILS.items()},
             "test_rules": ["Payouts whose amount ends in .13 (or 13 for UGX) are rejected and refunded."]}
@@ -181,10 +187,15 @@ def _txn_out(c, t, viewer_id: int):
         s = c.execute("SELECT u.full_name, a.account_number FROM accounts a JOIN users u ON u.id=a.user_id WHERE a.id=?",
                       (t["from_account_id"],)).fetchone()
         cp = {"name": s["full_name"], "account_number": s["account_number"]}
-    title = {"topup": "Test funds added", "payout": f"Payout · {money.RAILS.get(t['rail'], {}).get('name', '')}"}.get(t["type"])
+    if t["rail"] == live.RAIL:
+        title = {"topup": "Mobile money deposit", "payout": "Mobile money payout"}[t["type"]]
+    else:
+        title = {"topup": "Test funds added", "payout": f"Payout · {money.RAILS.get(t['rail'], {}).get('name', '')}"}.get(t["type"])
     if t["type"] == "transfer":
         title = f"{'From' if incoming else 'To'} {cp['name']}"
-    return {"ref": t["ref"], "type": t["type"], "status": t["status"], "direction": "in" if incoming or t["type"] == "topup" else "out",
+    if cp:
+        cp.pop("auth", None)
+    return {"ref": t["ref"], "type": t["type"], "status": t["status"], "live": money.is_live(t["currency"]), "direction": "in" if incoming or t["type"] == "topup" else "out",
             "title": title, "currency": t["currency"], "amount": money.from_minor(t["amount_minor"], t["currency"]),
             "rail": t["rail"], "counterparty": cp, "memo": t["memo"], "failure_reason": t["failure_reason"],
             "settle_at": t["settle_at"], "created_at": t["created_at"], "updated_at": t["updated_at"]}
@@ -313,6 +324,8 @@ def health():
     with db.closing() as c:
         return {"ok": True, "environment": "sandbox", "ledger_balanced": ledger.check_integrity(c)}
 
+
+app.include_router(live.build_router(current_user, _txn_out))
 
 # -------------------------------------------------------------- downloads
 
